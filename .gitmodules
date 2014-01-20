@@ -1,0 +1,3 @@
+[submodule "Plus/CoreMediaPlus"]
+	path = Plus/CoreMediaPlus
+	url = https://mczonk@github.com/McZonk/CoreMediaPlus.git

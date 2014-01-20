@@ -8,15 +8,147 @@
 
 #import <Foundation/Foundation.h>
 
-int main(int argc, const char * argv[])
+static NSString * NSStringWithTimeInterval(NSTimeInterval t)
 {
-
-	@autoreleasepool {
-	    
-	    // insert code here...
-	    NSLog(@"Hello, World!");
-	    
-	}
-    return 0;
+	NSTimeInterval milliseconds = remainder(t, 1.0);
+	t = floor(t);
+	
+	NSTimeInterval seconds = fmod(t, 60.0);
+	t = floor(t / 60.0);
+	
+	NSTimeInterval minutes = fmod(t, 60.0);
+	t = floor(t / 60.0);
+	
+	NSTimeInterval hours = t;
+	
+	return [NSString stringWithFormat:@"%02.0f:%02.0f:%02.0f.%03.0f", hours, minutes, seconds, milliseconds];
 }
 
+static NSString * StartKey = @"start";
+static NSString * DurationKey = @"duration";
+static NSString * TitleKey = @"title";
+
+int main(int argc, const char **argv)
+{
+	@autoreleasepool
+	{
+		if(argc < 2)
+		{
+			printf("Usage: %s inputfile outputfile\n", argv[0]);
+			return -1;
+		}
+		
+		const char *assetFile = argv[1];
+		NSURL *assetURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s", assetFile]];
+		
+		NSURL *outputURL = nil;
+		if(argc > 2)
+		{
+			const char *outputFile = argv[2];
+			outputURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s", outputFile]];
+		}
+		else
+		{
+			outputURL = [assetURL.URLByDeletingPathExtension URLByAppendingPathExtension:@"txt"];
+		}
+		
+		AVAsset *asset = [AVAsset assetWithURL:assetURL];
+		
+		// this is the alternative, but it sometimes returns nil
+		//NSArray *preferredLanguages = NSLocale.preferredLanguages;
+		//NSArray *chapters = [asset chapterMetadataGroupsBestMatchingPreferredLanguages:preferredLanguages];
+		
+		NSMutableArray *chapterInfos = [NSMutableArray array];
+		
+		NSArray *tracks = asset.tracks;
+		for(AVAssetTrack *track in tracks)
+		{
+			if(!track.isEnabled)
+			{
+				continue;
+			}
+			
+			NSArray *chapterTracks = [track associatedTracksOfType:AVTrackAssociationTypeChapterList];
+			if(chapterTracks.count == 0)
+			{
+				continue;
+			}
+			
+			for(AVAssetTrack *chapterTrack in chapterTracks)
+			{
+				if(![chapterTrack.mediaType isEqualToString:AVMediaTypeText])
+				{
+					continue;
+				}
+				
+				AVAssetReader *reader = [AVAssetReader assetReaderWithAsset:asset error:nil];
+				AVAssetReaderTrackOutput *output = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:chapterTrack outputSettings:nil];
+				[reader addOutput:output];
+				
+				[reader startReading];
+				
+				while(1)
+				{
+					CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
+					if(sampleBuffer == NULL)
+					{
+						break;
+					}
+					
+					CMBlockBufferRef dataBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
+					if(dataBuffer == NULL)
+					{
+						CFRelease(sampleBuffer);
+						continue;
+					}
+					
+					CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
+					
+					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
+					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
+
+					if(mediaType != kCMMediaType_Text || mediaSubType != 'text')
+					{
+						CFRelease(sampleBuffer);
+						continue;
+					}
+					
+					CMSampleTimingInfo sampleTiming;
+					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
+
+					NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
+					
+					CMTime start = sampleTiming.presentationTimeStamp;
+					CMTime duration = sampleTiming.duration;
+					
+					NSDictionary *chapterInfo = @{
+						StartKey: @(start.value / start.timescale),
+						DurationKey: @(duration.value / duration.timescale),
+						TitleKey: text,
+					};
+					
+					[chapterInfos addObject:chapterInfo];
+					
+					CFRelease(sampleBuffer);
+				}
+			}
+			
+			NSMutableString *output = [NSMutableString string];
+			
+			for(NSDictionary *chapterInfo in chapterInfos)
+			{
+				NSTimeInterval start = ((NSNumber *)chapterInfo[StartKey]).doubleValue;
+				NSTimeInterval duration = ((NSNumber *)chapterInfo[DurationKey]).doubleValue;
+				NSTimeInterval end = start + duration;
+				
+				NSString *title = chapterInfo[TitleKey];
+				
+				[output appendFormat:@"%@ --> %@ %@\n", NSStringWithTimeInterval(start), NSStringWithTimeInterval(end), title];
+			}
+			
+			[NSFileManager.defaultManager removeItemAtURL:outputURL error:nil];
+			[output writeToURL:outputURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
+		}
+	}
+	return 0;
+}

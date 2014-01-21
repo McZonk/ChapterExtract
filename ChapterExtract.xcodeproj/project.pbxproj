@@ -315,6 +315,7 @@
 				5060F4EC188DB39E00621460 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

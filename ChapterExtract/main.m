@@ -117,6 +117,10 @@ int main(int argc, const char **argv)
 					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
 
 					NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
+					if(text == nil)
+					{
+						text = @"";
+					}
 					
 					CMTime start = sampleTiming.presentationTimeStamp;
 					CMTime duration = sampleTiming.duration;

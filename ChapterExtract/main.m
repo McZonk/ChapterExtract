@@ -102,19 +102,19 @@ int main(int argc, const char **argv)
 					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
 					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
 
+					CMSampleTimingInfo sampleTiming;
+					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
+					
+					CMTime start = sampleTiming.presentationTimeStamp;
+					CMTime duration = sampleTiming.duration;
+
 					if(mediaType == kCMMediaType_Text)
 					{
-						CMSampleTimingInfo sampleTiming;
-						CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
-						
 						NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
 						if(text == nil)
 						{
 							text = @"";
 						}
-						
-						CMTime start = sampleTiming.presentationTimeStamp;
-						CMTime duration = sampleTiming.duration;
 						
 						NSDictionary *chapterInfo = @{
 							StartKey: @(start.value / start.timescale),
@@ -124,12 +124,17 @@ int main(int argc, const char **argv)
 						
 						[chapterInfos addObject:chapterInfo];
 					}
-					else
+					else if(mediaType == kCMMediaType_Video)
 					{
-						NSString *stringType = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, mediaType));
-						NSString *stringSubType = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, mediaSubType));
+						CGImageRef image = CMPSampleBufferCopyImage(NULL, sampleBuffer);
+
+						// TODO: handle image
+						//NSLog(@"%ld x %ld", CGImageGetWidth(image), CGImageGetHeight(image));
 						
-						NSLog(@"%@ %@", stringType, stringSubType);
+						if(image != NULL)
+						{
+							CFRelease(image);
+						}
 					}
 					
 					CFRelease(sampleBuffer);

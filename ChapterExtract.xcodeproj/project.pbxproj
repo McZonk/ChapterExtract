@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5060B6E618901B3100979779 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5060B6E518901B3100979779 /* CoreGraphics.framework */; };
 		5060F4E0188DB39E00621460 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5060F4DF188DB39E00621460 /* Foundation.framework */; };
 		5060F4E3188DB39E00621460 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 5060F4E2188DB39E00621460 /* main.m */; };
 		5060F4E7188DB39E00621460 /* ChapterExtract.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5060F4E6188DB39E00621460 /* ChapterExtract.1 */; };
@@ -46,6 +47,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5060B6E518901B3100979779 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		5060F4DC188DB39E00621460 /* ChapterExtract */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ChapterExtract; sourceTree = BUILT_PRODUCTS_DIR; };
 		5060F4DF188DB39E00621460 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		5060F4E2188DB39E00621460 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -63,8 +65,9 @@
 			files = (
 				5060F4F9188DB45100621460 /* libCoreMediaPlus.a in Frameworks */,
 				5060F4EF188DB3D600621460 /* AVFoundation.framework in Frameworks */,
-				5060F4F0188DB3D600621460 /* CoreMedia.framework in Frameworks */,
 				5060F4E0188DB39E00621460 /* Foundation.framework in Frameworks */,
+				5060B6E618901B3100979779 /* CoreGraphics.framework in Frameworks */,
+				5060F4F0188DB3D600621460 /* CoreMedia.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,6 +95,7 @@
 		5060F4DE188DB39E00621460 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5060B6E518901B3100979779 /* CoreGraphics.framework */,
 				5060F4ED188DB3D600621460 /* AVFoundation.framework */,
 				5060F4EE188DB3D600621460 /* CoreMedia.framework */,
 				5060F4DF188DB39E00621460 /* Foundation.framework */,

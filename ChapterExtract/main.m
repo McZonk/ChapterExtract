@@ -38,125 +38,61 @@ int main(int argc, const char **argv)
 			return -1;
 		}
 		
-		const char *assetFile = argv[1];
-		NSURL *assetURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s", assetFile]];
+		for(int i = 1; i < argc; ++i)
+		{ @autoreleasepool {
+			const char *assetFile = argv[i];
+			NSURL *URL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s", assetFile]];
 		
-		NSURL *outputURL = nil;
-		if(argc > 2)
-		{
-			const char *outputFile = argv[2];
-			outputURL = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%s", outputFile]];
-		}
-		else
-		{
-			outputURL = [assetURL.URLByDeletingPathExtension URLByAppendingPathExtension:@"txt"];
-		}
-		
-		AVAsset *asset = [AVAsset assetWithURL:assetURL];
-		
-		// this is the alternative, but it sometimes returns nil
-		//NSArray *preferredLanguages = NSLocale.preferredLanguages;
-		//NSArray *chapters = [asset chapterMetadataGroupsBestMatchingPreferredLanguages:preferredLanguages];
-		
-		NSMutableArray *chapterInfos = [NSMutableArray array];
-		
-		NSArray *tracks = asset.tracks;
-		for(AVAssetTrack *track in tracks)
-		{
-			if(!track.isEnabled)
-			{
-				continue;
-			}
+			NSData *data = [NSData dataWithContentsOfURL:URL];
+			NSMutableData *outData = [NSMutableData dataWithCapacity:data.length];
 			
-			NSArray *chapterTracks = [track associatedTracksOfType:AVTrackAssociationTypeChapterList];
-			if(chapterTracks.count == 0)
+			const void *buffer = data.bytes;
+			size_t length = data.length;
+		
+			size_t atomStart = 0;
+			size_t offset = 0;
+			CMPAtom *atom = NULL;
+			while(CMPAtomIterate(buffer, length, &offset, &atom))
 			{
-				continue;
-			}
+				size_t size = OSSwapBigToHostInt32(atom->size);
+				FourCharCode type = OSSwapBigToHostInt32(atom->type);
+
+				NSString *typeString = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, type));
 			
-			for(AVAssetTrack *chapterTrack in chapterTracks)
-			{
-				AVAssetReader *reader = [AVAssetReader assetReaderWithAsset:asset error:nil];
-				AVAssetReaderTrackOutput *output = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:chapterTrack outputSettings:nil];
-				[reader addOutput:output];
-				
-				[reader startReading];
-				
-				while(1)
+				NSData *atomData = nil;
+				if(type == 'uuid')
 				{
-					CMSampleBufferRef sampleBuffer = [output copyNextSampleBuffer];
-					if(sampleBuffer == NULL)
-					{
-						break;
-					}
-					
-					CMBlockBufferRef dataBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
-					if(dataBuffer == NULL)
-					{
-						CFRelease(sampleBuffer);
-						continue;
-					}
-					
-					CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
-					
-					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
-					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
-
-					CMSampleTimingInfo sampleTiming;
-					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
-					
-					CMTime start = sampleTiming.presentationTimeStamp;
-					CMTime duration = sampleTiming.duration;
-
-					if(mediaType == kCMMediaType_Text)
-					{
-						NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
-						if(text == nil)
-						{
-							text = @"";
-						}
-						
-						NSDictionary *chapterInfo = @{
-							StartKey: @(start.value / start.timescale),
-							DurationKey: @(duration.value / duration.timescale),
-							TitleKey: text,
-						};
-						
-						[chapterInfos addObject:chapterInfo];
-					}
-					else if(mediaType == kCMMediaType_Video)
-					{
-						CGImageRef image = CMPSampleBufferCopyImage(NULL, sampleBuffer);
-
-						// TODO: handle image
-						//NSLog(@"%ld x %ld", CGImageGetWidth(image), CGImageGetHeight(image));
-						
-						if(image != NULL)
-						{
-							CFRelease(image);
-						}
-					}
-					
-					CFRelease(sampleBuffer);
+					NSLog(@"%@ %ld %ld SHORTEND", typeString, atomStart, size);
+					atomData = [data subdataWithRange:NSMakeRange(atomStart, size - 163)];
 				}
+				else
+				{
+					NSLog(@"%@ %ld %ld", typeString, atomStart, size);
+					atomData = [data subdataWithRange:NSMakeRange(atomStart, size)];
+				}
+				
+				[outData appendData:atomData];
+				
+#if 0
+				NSString *typeString = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, type));
+				NSURL *atomURL = [URL URLByAppendingPathExtension:typeString];
+			
+				[atomData writeToURL:atomURL atomically:YES];
+			
+				NSLog(@"%@ %ld %ld", typeString, atomStart, size);
+				
+#endif
+				atomStart = offset;
 			}
 			
-			NSMutableString *output = [NSMutableString string];
+			NSString *ext = URL.pathExtension;
+			NSURL *outURL = [[URL.URLByDeletingPathExtension URLByAppendingPathExtension:@"fix"] URLByAppendingPathExtension:ext];
 			
-			for(NSDictionary *chapterInfo in chapterInfos)
-			{
-				NSTimeInterval start = ((NSNumber *)chapterInfo[StartKey]).doubleValue;
-				NSTimeInterval duration = ((NSNumber *)chapterInfo[DurationKey]).doubleValue;
-				NSTimeInterval end = start + duration;
-				
-				NSString *title = chapterInfo[TitleKey];
-				
-				[output appendFormat:@"%@ --> %@ %@\n", NSStringWithTimeInterval(start), NSStringWithTimeInterval(end), title];
-			}
-			
-			[NSFileManager.defaultManager removeItemAtURL:outputURL error:nil];
-			[output writeToURL:outputURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
-		}
+			[outData writeToURL:outURL atomically:YES];
+		}}
+		
+		
+		
 	}
 	return 0;
 }

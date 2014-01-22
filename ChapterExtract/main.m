@@ -76,11 +76,6 @@ int main(int argc, const char **argv)
 			
 			for(AVAssetTrack *chapterTrack in chapterTracks)
 			{
-				if(![chapterTrack.mediaType isEqualToString:AVMediaTypeText])
-				{
-					continue;
-				}
-				
 				AVAssetReader *reader = [AVAssetReader assetReaderWithAsset:asset error:nil];
 				AVAssetReaderTrackOutput *output = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:chapterTrack outputSettings:nil];
 				[reader addOutput:output];
@@ -107,31 +102,35 @@ int main(int argc, const char **argv)
 					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
 					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
 
-					if(mediaType != kCMMediaType_Text || (mediaSubType != 'text' && mediaSubType != 'tx3g'))
+					if(mediaType == kCMMediaType_Text)
 					{
-						CFRelease(sampleBuffer);
-						continue;
+						CMSampleTimingInfo sampleTiming;
+						CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
+						
+						NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
+						if(text == nil)
+						{
+							text = @"";
+						}
+						
+						CMTime start = sampleTiming.presentationTimeStamp;
+						CMTime duration = sampleTiming.duration;
+						
+						NSDictionary *chapterInfo = @{
+							StartKey: @(start.value / start.timescale),
+							DurationKey: @(duration.value / duration.timescale),
+							TitleKey: text,
+						};
+						
+						[chapterInfos addObject:chapterInfo];
 					}
-					
-					CMSampleTimingInfo sampleTiming;
-					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
-
-					NSString *text = CFBridgingRelease(CMPSampleBufferCopyText(NULL, sampleBuffer));
-					if(text == nil)
+					else
 					{
-						text = @"";
+						NSString *stringType = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, mediaType));
+						NSString *stringSubType = CFBridgingRelease(CMPAtomTypeCopyStringRef(NULL, mediaSubType));
+						
+						NSLog(@"%@ %@", stringType, stringSubType);
 					}
-					
-					CMTime start = sampleTiming.presentationTimeStamp;
-					CMTime duration = sampleTiming.duration;
-					
-					NSDictionary *chapterInfo = @{
-						StartKey: @(start.value / start.timescale),
-						DurationKey: @(duration.value / duration.timescale),
-						TitleKey: text,
-					};
-					
-					[chapterInfos addObject:chapterInfo];
 					
 					CFRelease(sampleBuffer);
 				}

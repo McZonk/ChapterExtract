@@ -107,7 +107,7 @@ int main(int argc, const char **argv)
 					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
 					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
 
-					if(mediaType != kCMMediaType_Text || mediaSubType != 'text')
+					if(mediaType != kCMMediaType_Text || (mediaSubType != 'text' && mediaSubType != 'tx3g'))
 					{
 						CFRelease(sampleBuffer);
 						continue;

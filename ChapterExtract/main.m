@@ -100,7 +100,6 @@ int main(int argc, const char **argv)
 					CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
 					
 					CMMediaType mediaType = CMFormatDescriptionGetMediaType(formatDescription);
-					FourCharCode mediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription);
 
 					CMSampleTimingInfo sampleTiming;
 					CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &sampleTiming);
